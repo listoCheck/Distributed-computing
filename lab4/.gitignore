@@ -1,0 +1,8 @@
+pa4/pa4
+pa4/a.out
+pa4/*.o
+pa4/events.log
+pa4/pipes.log
+pa4/mutex.trace
+__pycache__/
+.publish-repo/

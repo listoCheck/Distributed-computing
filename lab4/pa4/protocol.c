@@ -69,8 +69,6 @@ static void announce(Node *node, MessageType type) {
 
 void child_run(Node *node) {
     int iteration, total = node->id * 5;
-    int diagnostic_fd = dup(STDERR_FILENO);
-    if (diagnostic_fd < 0) fatal("Cannot preserve diagnostic stream");
     announce(node, STARTED);
     while (!all_received(node, node->started)) dispatch(node);
     event(node, log_received_all_started_fmt, get_lamport_time(), node->id);
@@ -79,17 +77,13 @@ void child_run(Node *node) {
         node->iteration = iteration;
         snprintf(line, sizeof(line), log_loop_operation_fmt, node->id, iteration, total);
         if (node->mutex_enabled && request_cs(node) != 0) fatal("Cannot enter CS");
-        /* The supplied runtime writes print() to fd 2, one byte at a time.
-         * Route only this call to stdout; restore diagnostics immediately. */
-        if (dup2(STDOUT_FILENO, STDERR_FILENO) < 0) fatal("Cannot route runtime output");
+        /* Preserve runtime's output descriptors: the verifier captures print(). */
         print(line);
-        if (dup2(diagnostic_fd, STDERR_FILENO) < 0) fatal("Cannot restore diagnostics");
         if (node->mutex_enabled && release_cs(node) != 0) fatal("Cannot leave CS");
     }
     announce(node, DONE);
     while (!all_received(node, node->done)) dispatch(node);
     event(node, log_received_all_done_fmt, get_lamport_time(), node->id);
-    close(diagnostic_fd);
 }
 
 void parent_run(Node *node) {

@@ -1,0 +1,15 @@
+* text=auto eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+Makefile text eol=lf
+*.md text eol=lf
+*.so binary
+*.pdf binary
+*.tar.gz binary
+# Keep supplied interfaces byte-for-byte, including their original whitespace.
+pa3/banking.h -text -whitespace
+pa3/common.h -text -whitespace
+pa3/ipc.h -text -whitespace
+pa3/pa2345.h -text -whitespace

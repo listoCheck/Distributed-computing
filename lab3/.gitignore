@@ -1,0 +1,7 @@
+pa3/pa3
+pa3/a.out
+pa3/events.log
+pa3/pipes.log
+tests/.build/
+__pycache__/
+.publish-repo/

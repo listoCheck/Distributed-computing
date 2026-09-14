@@ -91,7 +91,9 @@ int main(int argc, char **argv) {
     int id;
     int failed = 0;
     int trace_enabled = 0;
+    int stats_enabled = 0;
     process.trace_fd = -1;
+    process.stats_fd = -1;
     for (id = 1; id < argc; ++id) {
         if (strcmp(argv[id], "-p") == 0 && id + 1 < argc && !process.children) {
             process.children = (local_id)number(argv[++id], 1, MAX_PROCESS_ID);
@@ -99,8 +101,10 @@ int main(int argc, char **argv) {
             process.mutex_enabled = 1;
         } else if (strcmp(argv[id], "--trace") == 0 && !trace_enabled) {
             trace_enabled = 1;
+        } else if (strcmp(argv[id], "--stats") == 0 && !stats_enabled) {
+            stats_enabled = 1;
         } else {
-            fatal("Usage: ./pa4 -p CHILDREN [--mutexl] [--trace]");
+            fatal("Usage: ./pa4 -p CHILDREN [--mutexl] [--trace] [--stats]");
         }
     }
     if (!process.children) fatal("Expected -p CHILDREN (1..15)");
@@ -116,6 +120,7 @@ int main(int argc, char **argv) {
         process.trace_fd = open("mutex.trace", O_CREAT | O_TRUNC | O_WRONLY | O_APPEND, 0644);
         if (process.trace_fd < 0) fatal("Cannot open trace");
     }
+    if (stats_enabled) stats_open(&process);
     fflush(NULL);
     for (id = 1; id <= process.children; ++id) {
         pid_t pid = fork();
@@ -127,6 +132,7 @@ int main(int argc, char **argv) {
             process.id = (local_id)id;
             channels_keep_local(&process);
             child_run(&process);
+            stats_finish(&process);
             channels_close(&process);
             close(process.log_fd);
             if (process.trace_fd >= 0) close(process.trace_fd);
@@ -137,6 +143,7 @@ int main(int argc, char **argv) {
     }
     channels_keep_local(&process);
     parent_run(&process);
+    stats_finish(&process);
     channels_close(&process);
     close(process.log_fd);
     if (process.trace_fd >= 0) close(process.trace_fd);

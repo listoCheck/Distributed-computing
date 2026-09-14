@@ -27,6 +27,7 @@ int request_cs(const void *self) {
     trace_event(node, "REQUEST");
     while (!first_and_confirmed(node)) dispatch(node);
     node->inside = 1;
+    stats_entry(node);
     trace_event(node, "ENTER");
     return 0;
 }

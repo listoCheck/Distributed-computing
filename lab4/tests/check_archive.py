@@ -32,4 +32,5 @@ with tempfile.TemporaryDirectory(prefix='pa4-archive-') as directory:
     assert sorted(run.stderr.splitlines()) == sorted(expected), run.stderr
     assert sorted(run.stdout.splitlines()) == sorted((work / 'events.log').read_text().splitlines())
     assert not (work / 'mutex.trace').exists()
+    assert not (work / 'mutex.stats.csv').exists()
     print('PASS: extracted archive, PDF compiler flags, 9 workers, 225 exact iteration lines, no --trace')

@@ -4,5 +4,6 @@ pa4/*.o
 pa4/events.log
 pa4/pipes.log
 pa4/mutex.trace
+pa4/mutex.stats.csv
 __pycache__/
 .publish-repo/

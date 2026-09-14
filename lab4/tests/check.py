@@ -1,6 +1,7 @@
 """Linux integration checks against the supplied runtime, no Python packages."""
 import collections
 import argparse
+import csv
 import os
 from pathlib import Path
 import subprocess
@@ -15,7 +16,7 @@ for variable in ('PA45_SILENT', 'PA_RT_DEBUG', 'PA_STRACE_MODE', 'LD_PRELOAD'):
 
 def check(count, mutex, silent=False):
     with tempfile.TemporaryDirectory(prefix='pa4-test-') as directory:
-        command = [str(PROGRAM), '-p', str(count), '--trace']
+        command = [str(PROGRAM), '-p', str(count), '--trace', '--stats']
         if mutex:
             command.append('--mutexl')
         environment = dict(ENV, LD_PRELOAD=str(PROGRAM.parent / 'libruntime.so'))
@@ -43,6 +44,8 @@ def check(count, mutex, silent=False):
         else:
             assert collections.Counter(work) == collections.Counter(expected), 'Wrong runtime output on stderr'
         trace = (path / 'mutex.trace').read_text().splitlines()
+        waits = collections.defaultdict(list)
+        request_times = {}
         if not mutex:
             assert not trace
         else:
@@ -58,10 +61,12 @@ def check(count, mutex, silent=False):
                 if action == 'REQUEST':
                     assert peer not in requests
                     requests[peer] = iteration
+                    request_times[peer] = clock
                 elif action == 'ENTER':
                     assert owner is None, ('overlap', line, owner)
                     assert requests[peer] == iteration
                     owner = (peer, iteration)
+                    waits[peer].append(clock - request_times[peer])
                 elif action == 'EXIT':
                     assert owner == (peer, iteration)
                     assert iteration == completed[peer] + 1
@@ -72,6 +77,21 @@ def check(count, mutex, silent=False):
                     raise AssertionError(line)
             assert owner is None and not requests
             assert completed == {p: p * 5 for p in range(1, count + 1)}
+        with (path / 'mutex.stats.csv').open() as stream:
+            rows = [{key: int(value) for key, value in row.items()} for row in csv.DictReader(stream)]
+        assert len(rows) == count
+        assert sorted(row['id'] for row in rows) == list(range(1, count + 1))
+        total_entries = 5 * count * (count + 1) // 2
+        for row in rows:
+            peer = row['id']
+            entries = peer * 5 if mutex else 0
+            own_broadcasts = entries * (count - 1)
+            other_requests = total_entries - entries if mutex else 0
+            assert row['entries'] == entries
+            assert row['request_sent'] == row['release_sent'] == row['reply_received'] == own_broadcasts
+            assert row['request_received'] == row['release_received'] == row['reply_sent'] == other_requests
+            assert row['wait_ticks'] == sum(waits[peer])
+            assert row['max_wait_ticks'] == max(waits[peer], default=0)
         print('OK: p=%d mutex=%s silent=%s' % (count, mutex, silent), flush=True)
 
 
@@ -82,4 +102,4 @@ for n in args.counts:
     for enabled in (False, True):
         check(n, enabled)
 check(9, True, silent=True)
-print('All %d integration cases passed.' % (2 * len(args.counts) + 1), flush=True)
+print('All %d integration cases passed, including message counts and wait statistics.' % (2 * len(args.counts) + 1), flush=True)

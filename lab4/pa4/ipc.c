@@ -109,6 +109,7 @@ static int write_frame(Node *node, local_id target, const Message *message) {
             return -1;
         }
     }
+    stats_message(node, message->s_header.s_type, 1);
     return 0;
 }
 
@@ -180,6 +181,7 @@ int receive(void *self, local_id from, Message *msg) {
                 *msg = decoder->frame;
                 decoder->used = 0;
                 node->sender = from;
+                stats_message(node, msg->s_header.s_type, 0);
                 return clock_receive(msg->s_header.s_local_time);
             }
         }

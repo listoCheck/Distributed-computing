@@ -14,7 +14,7 @@
 
 static Process *parent;
 static FILE *events;
-static FILE *pipes_log;
+static FILE *pipe_log_file;
 
 static void keep_process_ends(Process *p, int pipes[][MAX_PROCESS_ID + 1][2]) {
     local_id from, to;
@@ -278,8 +278,8 @@ int main(int argc, char **argv) {
     }
     events = fopen("events.log", "w");
     if (events == NULL) fail("events.log");
-    pipes_log = fopen("pipes.log", "w");
-    if (pipes_log == NULL) fail("pipes.log");
+    pipe_log_file = fopen("pipes.log", "w");
+    if (pipe_log_file == NULL) fail("pipes.log");
     memset(&root, 0, sizeof(root)); root.id = 0; root.children = children;
     for (from = 0; from <= children; ++from) for (to = 0; to <= children; ++to) {
         pipes[(int)from][(int)to][0] = pipes[(int)from][(int)to][1] = -1;
@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
             if (flags < 0 || fcntl(pipes[(int)from][(int)to][0], F_SETFL, flags | O_NONBLOCK) < 0) fail("fcntl");
             flags = fcntl(pipes[(int)from][(int)to][1], F_GETFL);
             if (flags < 0 || fcntl(pipes[(int)from][(int)to][1], F_SETFL, flags | O_NONBLOCK) < 0) fail("fcntl");
-            fprintf(pipes_log, "%d -> %d: read %d, write %d\n", from, to,
+            fprintf(pipe_log_file, "%d -> %d: read %d, write %d\n", from, to,
                     pipes[(int)from][(int)to][0], pipes[(int)from][(int)to][1]);
         }
     }
@@ -323,6 +323,6 @@ int main(int argc, char **argv) {
     for (id = 1; id <= children; ++id) (void)waitpid(spawned[(int)id], NULL, 0);
     print_history(&all);
     fclose(events);
-    fclose(pipes_log);
+    fclose(pipe_log_file);
     return EXIT_SUCCESS;
 }
